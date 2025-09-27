@@ -9,5 +9,4 @@ A client-side mod that brings the full server preview (MOTD, ping, player count,
 
 #### Stable builds
 
-The latest stable release of ServerLens can be downloaded from our official [Modrinth]() and
-[CurseForge]() pages.
+The latest stable release of ServerLens can be downloaded from our official [Modrinth]() page.
