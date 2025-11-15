@@ -23,5 +23,5 @@
     "fabric-api": "*"
   },
   "license": "Apache-2.0",
-  "icon": "assets/serverlens/icon.png"
+  "icon": "icon.png"
 }
