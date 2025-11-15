@@ -1,4 +1,4 @@
-<img src="src/main/resources/assets/serverlens/icon.png" width="128">
+<img src="src/main/resources/icon.png" width="128">
 
 # ServerLens
 
