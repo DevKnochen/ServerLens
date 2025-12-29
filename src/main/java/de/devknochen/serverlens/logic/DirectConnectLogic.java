@@ -19,6 +19,7 @@ package de.devknochen.serverlens.logic;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.network.MultiplayerServerListPinger;
 import net.minecraft.client.network.ServerInfo.Status;
+import net.minecraft.network.NetworkingBackend;
 import net.minecraft.text.Text;
 
 import java.net.UnknownHostException;
@@ -37,7 +38,7 @@ public class DirectConnectLogic {
             pinger.add(serverInfo, () -> {}, () -> {
                 // When ping finishes, call callback
                 callback.onFinished(serverInfo);
-            });
+            }, NetworkingBackend.remote(true));
         } catch (UnknownHostException e) {
             serverInfo.label = Text.literal("Unknown host");
             serverInfo.playerCountLabel = Text.literal("0/0");
