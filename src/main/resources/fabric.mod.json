@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "serverlens",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "ServerLens",
   "description": "A client-side mod that brings the full server preview (MOTD, ping, player count, and favicon) to the Direct-Connect Screen.",
   "authors": ["DevKnochen"],
@@ -19,7 +19,7 @@
   ],
   "depends": {
     "fabricloader": "*",
-    "minecraft": ">=1.21.6",
+    "minecraft": "1.21.11",
     "fabric-api": "*"
   },
   "license": "Apache-2.0",
