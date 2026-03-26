@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Hugo Steiner
+ * Copyright 2026 DevKnochen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,81 +16,76 @@
 
 package de.devknochen.serverlens.mixin;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import de.devknochen.serverlens.Main;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.multiplayer.DirectConnectScreen;
-import net.minecraft.client.gui.screen.world.WorldIcon;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import de.devknochen.serverlens.ServerDataUpdater;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.DirectJoinServerScreen;
+import net.minecraft.client.gui.screens.FaviconTexture;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.util.FormattedCharSequence;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import de.devknochen.serverlens.ServerDataUpdater;
-
+import java.util.Arrays;
 import java.util.List;
 
-@Mixin(DirectConnectScreen.class)
+@Mixin(DirectJoinServerScreen.class)
 public abstract class DirectConnectScreenMixin extends Screen implements ServerDataUpdater {
 
-    protected DirectConnectScreenMixin(Text title) {
+    private static final Identifier PING_1 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/ping_1.png");
+    private static final Identifier PING_2 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/ping_2.png");
+    private static final Identifier PING_3 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/ping_3.png");
+    private static final Identifier PING_4 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/ping_4.png");
+    private static final Identifier PING_5 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/ping_5.png");
+    private static final Identifier PINGING_1 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/pinging_1.png");
+    private static final Identifier PINGING_2 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/pinging_2.png");
+    private static final Identifier PINGING_3 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/pinging_3.png");
+    private static final Identifier PINGING_4 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/pinging_4.png");
+    private static final Identifier PINGING_5 = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/pinging_5.png");
+    private static final Identifier UNREACHABLE = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/unreachable.png");
+    private static final Identifier INCOMPATIBLE = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/incompatible.png");
+    private static final Identifier DEFAULT_ICON = Identifier.fromNamespaceAndPath("serverlens", "gui/serverlist/default_icon.png");
+
+    @Shadow
+    private EditBox ipEdit;
+
+    private String lastAddress = "";
+    private String serverName = "";
+    private Component motdText = Component.empty();
+    private String playerCount = "";
+    private long pingValue = -1L;
+    private ServerData.State serverState = ServerData.State.INITIAL;
+    private FaviconTexture serverIcon = null;
+    private byte[] lastFavicon = null;
+
+    protected DirectConnectScreenMixin(Component title) {
         super(title);
     }
 
-    // --- Textures ---
-    private static final Identifier PING_1 = Identifier.of("serverlens", "gui/serverlist/ping_1.png");
-    private static final Identifier PING_2 = Identifier.of("serverlens", "gui/serverlist/ping_2.png");
-    private static final Identifier PING_3 = Identifier.of("serverlens", "gui/serverlist/ping_3.png");
-    private static final Identifier PING_4 = Identifier.of("serverlens", "gui/serverlist/ping_4.png");
-    private static final Identifier PING_5 = Identifier.of("serverlens", "gui/serverlist/ping_5.png");
-    private static final Identifier PINGING_1 = Identifier.of("serverlens", "gui/serverlist/pinging_1.png");
-    private static final Identifier PINGING_2 = Identifier.of("serverlens", "gui/serverlist/pinging_2.png");
-    private static final Identifier PINGING_3 = Identifier.of("serverlens", "gui/serverlist/pinging_3.png");
-    private static final Identifier PINGING_4 = Identifier.of("serverlens", "gui/serverlist/pinging_4.png");
-    private static final Identifier PINGING_5 = Identifier.of("serverlens", "gui/serverlist/pinging_5.png");
-    private static final Identifier UNREACHABLE = Identifier.of("serverlens", "gui/serverlist/unreachable.png");
-    private static final Identifier INCOMPATIBLE = Identifier.of("serverlens", "gui/serverlist/incompatible.png");
-
-    @Shadow
-    private TextFieldWidget addressField;
-
-    private String lastAddress = "";
-
-    // --- Server data fields ---
-    private String serverName = "";
-    private Text motdText = Text.empty();
-    private String playerCount = "0/0";
-    private long pingValue = -1;
-
-    // --- Favicon ---
-    private WorldIcon serverIcon = null;
-    private byte[] lastFavicon = null;
-
     @Override
-    public void updateServerData(String name, String[] motd, String players, long ping) {
+    public void updateServerData(String name, Component motd, String players, long ping, ServerData.State state) {
         this.serverName = name != null ? name : "";
-        this.playerCount = players != null ? players : "0/0";
+        this.motdText = motd != null ? motd : Component.empty();
+        this.playerCount = players != null ? players : "";
         this.pingValue = ping;
-        // Do NOT set motdText here; we will set it via setMotdText(Text) directly
-    }
-
-    // Setter to accept the formatted MOTD Text from Main
-    public void setMotdText(Text motd) {
-        this.motdText = motd != null ? motd : Text.empty();
+        this.serverState = state != null ? state : ServerData.State.INITIAL;
     }
 
     @Override
     public void updateFavicon(byte[] faviconBytes) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             client.execute(() -> updateFavicon(faviconBytes));
             return;
         }
@@ -104,137 +99,136 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerD
             return;
         }
 
-        if (lastFavicon != null && java.util.Arrays.equals(faviconBytes, lastFavicon)) {
-            return; // already loaded
+        if (lastFavicon != null && Arrays.equals(faviconBytes, lastFavicon)) {
+            return;
         }
         lastFavicon = faviconBytes;
 
-        byte[] valid = net.minecraft.client.network.ServerInfo.validateFavicon(faviconBytes);
+        byte[] valid = ServerData.validateIcon(faviconBytes);
         if (valid == null) {
-            System.out.println("Invalid favicon received.");
             return;
         }
 
         try {
             if (serverIcon != null) {
                 serverIcon.close();
-                serverIcon = null;
             }
 
             String idSource = lastAddress != null && !lastAddress.isBlank() ? lastAddress : "directconnectmotd";
-            serverIcon = WorldIcon.forServer(client.getTextureManager(), idSource);
-
-            NativeImage img = NativeImage.read(valid);
-            serverIcon.load(img);
-            if (Main.debugingMode) System.out.println("Favicon successfully loaded!");
+            serverIcon = FaviconTexture.forServer(client.getTextureManager(), idSource);
+            serverIcon.upload(NativeImage.read(valid));
         } catch (Exception e) {
             if (serverIcon != null) {
                 serverIcon.close();
                 serverIcon = null;
             }
-            if (Main.debugingMode) System.out.println("Failed to load favicon: " + e.getMessage());
-            e.printStackTrace();
+            if (Main.debugingMode) {
+                e.printStackTrace();
+            }
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
-    private void renderExtras(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        // detect address changes and trigger ping
-        if (addressField != null) {
-            String address = addressField.getText();
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    private void renderExtras(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (ipEdit != null) {
+            String address = ipEdit.getValue();
             if (address != null && !address.isBlank() && !address.equals(lastAddress)) {
                 lastAddress = address;
-                de.devknochen.serverlens.Main.onAddressBarUpdate(address);
+                serverName = address;
+                motdText = Component.translatable("multiplayer.status.pinging");
+                playerCount = "";
+                pingValue = -1L;
+                serverState = ServerData.State.PINGING;
+                updateFavicon(null);
+                Main.onAddressBarUpdate(address);
             }
         }
 
-        // dynamic layout positions
         int maxRowWidth = 305;
         int minRowWidth = 200;
-        int sidePadding = 20; // left+right padding
+        int sidePadding = 20;
         int rowWidth = Math.min(maxRowWidth, Math.max(minRowWidth, this.width - sidePadding * 2));
         int baseX = (this.width - rowWidth) / 2;
-
-        // Y: place just under the address field if available, otherwise fallback
-        int baseY = (addressField != null)
-                ? addressField.getY() + addressField.getHeight() + 8
-                : this.height / 2 + 30;
-
+        int baseY = ipEdit != null ? ipEdit.getY() + ipEdit.getHeight() + 8 : this.height / 2 + 30;
         int iconSize = 32;
 
-        // --- Favicon ---
         if (serverIcon != null) {
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, serverIcon.getTextureId(),
-                    baseX, baseY, 0, 0, iconSize, iconSize, iconSize, iconSize);
+            context.blit(RenderPipelines.GUI_TEXTURED, serverIcon.textureLocation(), baseX, baseY, 0.0F, 0.0F, iconSize, iconSize, iconSize, iconSize);
         } else {
-            Identifier fallbackIcon = Identifier.of("serverlens", "gui/serverlist/default_icon.png");
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, fallbackIcon,
-                    baseX, baseY, 0, 0, iconSize, iconSize, iconSize, iconSize);
+            context.blit(RenderPipelines.GUI_TEXTURED, DEFAULT_ICON, baseX, baseY, 0.0F, 0.0F, iconSize, iconSize, iconSize, iconSize);
         }
 
+        Font font = this.font;
         int textX = baseX + iconSize + 3;
-        context.drawTextWithShadow(this.textRenderer, Text.literal(serverName), textX, baseY, 0xFFFFFFFF);
+        context.text(font, Component.literal(serverName), textX, baseY, 0xFFFFFFFF, true);
 
-        // --- MOTD ---
         if (motdText != null && !motdText.getString().isEmpty()) {
             int motdY = baseY + 12;
-            int lineHeight = this.textRenderer.fontHeight;
-            int availableWidth = rowWidth - iconSize - 10; // vanilla-style width
-            List<OrderedText> lines = this.textRenderer.wrapLines(motdText, availableWidth);
-            for (OrderedText line : lines) {
-                context.drawTextWithShadow(this.textRenderer, line, textX, motdY, 0xFFFFFFFF);
-                motdY += lineHeight;
+            int availableWidth = rowWidth - iconSize - 10;
+            List<FormattedCharSequence> lines = font.split(motdText, availableWidth);
+            for (FormattedCharSequence line : lines) {
+                context.text(font, line, textX, motdY, 0xFFFFFFFF, true);
+                motdY += font.lineHeight;
             }
         }
 
-        // --- Ping icon ---
-        Identifier pingTexture;
-        if (pingValue < 0) {
-            // Animate ping bars while server is being pinged
-            long tick = System.currentTimeMillis() / 100L;
-            int frame = (int) (tick % 8);
-            if (frame > 4) frame = 8 - frame;
-
-            switch (frame) {
-                case 1 -> pingTexture = PINGING_2;
-                case 2 -> pingTexture = PINGING_3;
-                case 3 -> pingTexture = PINGING_4;
-                case 4 -> pingTexture = PINGING_5;
-                default -> pingTexture = PINGING_1;
-            }
-        } else if (pingValue < 150L) pingTexture = PING_5;
-        else if (pingValue < 300L) pingTexture = PING_4;
-        else if (pingValue < 600L) pingTexture = PING_3;
-        else if (pingValue < 1000L) pingTexture = PING_2;
-        else pingTexture = PING_1;
-
-        // use vanilla-like offset: entryWidth - 10 - 5
-        int pingX = baseX + rowWidth - 10 - 5;
+        Identifier pingTexture = getPingTexture();
+        int pingX = baseX + rowWidth - 15;
         int pingWidth = 10;
         int pingHeight = 8;
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, pingTexture, pingX, baseY,
-                0, 0, pingWidth, pingHeight, pingWidth, pingHeight);
+        context.blit(RenderPipelines.GUI_TEXTURED, pingTexture, pingX, baseY, 0.0F, 0.0F, pingWidth, pingHeight, pingWidth, pingHeight);
 
-        // --- Player count ---
-        if (pingValue >= 0) { // only show player count when ping is valid
-            String players = playerCount.contains("/") ? playerCount.split("/")[0] : playerCount;
-            String maxPlayers = playerCount.contains("/") ? playerCount.split("/")[1] : "0";
+        if (serverState == ServerData.State.SUCCESSFUL && !playerCount.isBlank() && playerCount.contains("/")) {
+            String[] parts = playerCount.split("/", 2);
+            String players = parts[0];
+            String maxPlayers = parts.length > 1 ? parts[1] : "0";
             String slash = "/";
 
-            int playersWidth = this.textRenderer.getWidth(players);
-            int slashWidth = this.textRenderer.getWidth(slash);
-            int maxPlayersWidth = this.textRenderer.getWidth(maxPlayers);
-
-            // position like vanilla: i - j - 5 (where i is pingX)
+            int playersWidth = font.width(players);
+            int slashWidth = font.width(slash);
+            int maxPlayersWidth = font.width(maxPlayers);
             int playerTextX = pingX - (playersWidth + slashWidth + maxPlayersWidth) - 5;
 
-            context.drawTextWithShadow(this.textRenderer, Text.literal(players),
-                    playerTextX, baseY, 0xFFAAAAAA);
-            context.drawTextWithShadow(this.textRenderer, Text.literal(slash),
-                    playerTextX + playersWidth, baseY, 0xFF555555);
-            context.drawTextWithShadow(this.textRenderer, Text.literal(maxPlayers),
-                    playerTextX + playersWidth + slashWidth, baseY, 0xFFAAAAAA);
+            context.text(font, Component.literal(players), playerTextX, baseY, 0xFFAAAAAA, true);
+            context.text(font, Component.literal(slash), playerTextX + playersWidth, baseY, 0xFF555555, true);
+            context.text(font, Component.literal(maxPlayers), playerTextX + playersWidth + slashWidth, baseY, 0xFFAAAAAA, true);
         }
     }
 
+    private Identifier getPingTexture() {
+        if (serverState == ServerData.State.UNREACHABLE) {
+            return UNREACHABLE;
+        }
+        if (serverState == ServerData.State.INCOMPATIBLE) {
+            return INCOMPATIBLE;
+        }
+        if (serverState == ServerData.State.PINGING || pingValue < 0L) {
+            long tick = System.currentTimeMillis() / 100L;
+            int frame = (int) (tick % 8);
+            if (frame > 4) {
+                frame = 8 - frame;
+            }
+
+            return switch (frame) {
+                case 1 -> PINGING_2;
+                case 2 -> PINGING_3;
+                case 3 -> PINGING_4;
+                case 4 -> PINGING_5;
+                default -> PINGING_1;
+            };
+        }
+        if (pingValue < 150L) {
+            return PING_5;
+        }
+        if (pingValue < 300L) {
+            return PING_4;
+        }
+        if (pingValue < 600L) {
+            return PING_3;
+        }
+        if (pingValue < 1000L) {
+            return PING_2;
+        }
+        return PING_1;
+    }
 }

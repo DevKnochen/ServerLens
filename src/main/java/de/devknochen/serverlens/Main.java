@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Hugo Steiner
+ * Copyright 2026 DevKnochen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,33 +18,22 @@ package de.devknochen.serverlens;
 
 import de.devknochen.serverlens.logic.DirectConnectLogic;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.status.ServerStatus;
 
 public class Main implements ClientModInitializer {
 
-    private boolean hasListener = false;
-
-    // --- Debounce variables ---
     private static String lastAddress = "";
     private static long lastPingTime = 0;
-    private static final long PING_DEBOUNCE_MS = 500; // 0.5s delay
-    public static boolean debugingMode = false; // made static for static access
+    private static final long PING_DEBOUNCE_MS = 500;
+    public static boolean debugingMode = false;
 
     @Override
     public void onInitializeClient() {
         System.out.println("ServerLens initialized!");
-
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (hasListener && !(client.currentScreen instanceof net.minecraft.client.gui.screen.multiplayer.DirectConnectScreen)) {
-                hasListener = false;
-            }
-        });
     }
-
-    // Called from Mixin when the address field changes
     public static void onAddressBarUpdate(String address) {
         if (address == null || address.isBlank()) return;
 
@@ -59,35 +48,31 @@ public class Main implements ClientModInitializer {
         new Thread(() -> {
             DirectConnectLogic.pingServer(address, serverInfo -> {
                 if (serverInfo != null) {
+                    ServerStatus.Players players = serverInfo.players;
+                    String playerCount = players != null ? players.online() + "/" + players.max() : "";
+
                     if (debugingMode) {
                         System.out.println("=== Server Ping Result ===");
-                        System.out.println("MOTD: " + (serverInfo.label != null ? serverInfo.label.getString() : "N/A"));
-                        System.out.println("Players: " + (serverInfo.playerCountLabel != null ? serverInfo.playerCountLabel.getString() : "0/0"));
+                        System.out.println("MOTD: " + (serverInfo.motd != null ? serverInfo.motd.getString() : "N/A"));
+                        System.out.println("Players: " + (!playerCount.isEmpty() ? playerCount : "0/0"));
                         System.out.println("Ping: " + serverInfo.ping);
                         System.out.println("Version: " + (serverInfo.version != null ? serverInfo.version.getString() : "Unknown"));
+                        System.out.println("State: " + serverInfo.state());
                     }
 
-                    MinecraftClient client = MinecraftClient.getInstance();
+                    Minecraft client = Minecraft.getInstance();
                     client.execute(() -> {
-                        Screen screen = client.currentScreen;
+                        Screen screen = client.screen;
                         if (screen instanceof ServerDataUpdater updater) {
-                            // Set the MOTD as a Text object (keeps colors)
-                            if (serverInfo.label != null) {
-                                updater.setMotdText(serverInfo.label);
-                            } else {
-                                updater.setMotdText(Text.empty());
-                            }
-
-                            // Keep string-based data for other fields
-                            String[] motdLines = serverInfo.label != null ? serverInfo.label.getString().split("\n") : new String[]{""};
                             updater.updateServerData(
                                     serverInfo.name != null ? serverInfo.name : "",
-                                    motdLines,
-                                    serverInfo.playerCountLabel != null ? serverInfo.playerCountLabel.getString() : "0/0",
-                                    serverInfo.ping
+                                    serverInfo.motd != null ? serverInfo.motd : Component.empty(),
+                                    playerCount,
+                                    serverInfo.ping,
+                                    serverInfo.state()
                             );
 
-                            updater.updateFavicon(serverInfo.getFavicon());
+                            updater.updateFavicon(serverInfo.getIconBytes());
                         }
                     });
 
@@ -95,6 +80,6 @@ public class Main implements ClientModInitializer {
                     if (debugingMode) System.out.println("=== Server Ping Failed ===");
                 }
             });
-        }).start();
+        }, "ServerLens-Pinger").start();
     }
 }

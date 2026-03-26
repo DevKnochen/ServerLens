@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Hugo Steiner
+ * Copyright 2026 DevKnochen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,10 @@
 
 package de.devknochen.serverlens;
 
-import net.minecraft.text.Text;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.network.chat.Component;
 
 public interface ServerDataUpdater {
-    // Update basic server info (name, player count, ping)
-    void updateServerData(String name, String[] motd, String players, long ping);
-
-    // Update the server favicon
+    void updateServerData(String name, Component motd, String players, long ping, ServerData.State state);
     void updateFavicon(byte[] favicon);
-
-    // Update the MOTD with formatted Text to preserve colors
-    void setMotdText(Text motd);
 }
