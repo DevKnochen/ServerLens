@@ -3,7 +3,7 @@
 # ServerLens
 
 [![Email](https://img.shields.io/badge/Contact-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:contact@knochenn.de)
-[![Donate on Ko-Fi](https://img.shields.io/badge/Donate%20on%20Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/knochennmc)
+[![Support on Ko-Fi](https://img.shields.io/badge/Support%20on%20Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/knochennmc)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)](https://github.com/DevKnochen/ServerLens/blob/main/LICENSE)
 
 ### See your server at a glance!
