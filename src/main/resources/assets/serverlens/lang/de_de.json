@@ -1,0 +1,4 @@
+{
+  "modmenu.summaryTranslation.serverlens": "Zeigt MOTD, den Ping, die Spieleranzahl und das Favicon des Servers im 'Direkt verbinden' Bildschirm an.",
+  "modmenu.descriptionTranslation.serverlens": "Eine client-side Mod, die die vollständige Servervorschau (MOTD, Ping, Spieleranzahl und Favicon) zum 'Direkt verbinden'-Bildschirm hinzufügt."
+}
